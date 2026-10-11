@@ -93,6 +93,14 @@ class RaopConnection(
 
     // ---- RTP ----
     private var audioPort = 0
+    /**
+     * The receiver's control port, from the SETUP response Transport:
+     * the destination for sync packets and retransmit replies. Internal
+     * so unit tests can verify SETUP parsing. Zero when the receiver
+     * named none (sync/resend then fall back as documented at the
+     * call sites).
+     */
+    internal var controlPort = 0
     private var timingPort = 0
     private var rtpSocket: DatagramSocket? = null
     private var timingSocket: DatagramSocket? = null
@@ -278,7 +286,7 @@ class RaopConnection(
         return effectiveLocalIp
     }
 
-    private fun parseTransport(header: String) {
+    internal fun parseTransport(header: String) {
         // e.g. RTP/AVP/UDP;unicast;interleaved=0-1;mode=record;
         //      server_port=6000;control_port=6001;timing_port=6002
         for (part in header.split(";")) {
@@ -286,6 +294,7 @@ class RaopConnection(
             if (kv.size != 2) continue
             when (kv[0].trim()) {
                 "server_port" -> audioPort = kv[1].trim().toIntOrNull() ?: 0
+                "control_port" -> controlPort = kv[1].trim().toIntOrNull() ?: 0
                 "timing_port" -> timingPort = kv[1].trim().toIntOrNull() ?: 0
             }
         }
@@ -380,6 +389,14 @@ class RaopConnection(
     private fun senderLoop() {
         // Small preroll so the first packets arrive before their play time.
         var nextNs = System.nanoTime() + 250_000_000L
+        // Flow accounting for the in-app log: a packets-sent counter
+        // every ~5 s, plus a distinct starvation line (throttled to
+        // first occurrence + at most every 10 s) so a field report of
+        // "connected but silent" shows whether audio actually left the
+        // phone. Nothing is logged per packet; quiet while audio flows.
+        var packetsSent = 0L
+        var lastFlowLogMs = System.currentTimeMillis()
+        var lastStarveLogMs = 0L
         val left = ShortArray(AlacEncoder.FRAME_SAMPLES)
         val right = ShortArray(AlacEncoder.FRAME_SAMPLES)
         val addr = try {
@@ -396,6 +413,14 @@ class RaopConnection(
                 }
                 if (n == -1) break // end of stream
                 if (n == -2) {
+                    val starveNowMs = System.currentTimeMillis()
+                    if (starveNowMs - lastStarveLogMs >= 10_000) {
+                        lastStarveLogMs = starveNowMs
+                        LogBus.log(
+                            "[raop] audio source starved: no PCM data " +
+                                "($packetsSent packets sent so far)",
+                        )
+                    }
                     Thread.sleep(50)
                     continue
                 }
@@ -427,6 +452,12 @@ class RaopConnection(
                         it.remove()
                     }
                 }
+                packetsSent++
+                val flowNowMs = System.currentTimeMillis()
+                if (flowNowMs - lastFlowLogMs >= 5_000) {
+                    lastFlowLogMs = flowNowMs
+                    LogBus.log("[raop] flow: $packetsSent packets sent")
+                }
                 seq = (seq + 1) and 0xFFFF
                 rtpTime += n
 
@@ -456,10 +487,6 @@ class RaopConnection(
         return (secs shl 32) or frac
     }
 
-    private fun writeU64(buf: ByteArray, off: Int, v: Long) {
-        for (i in 0 until 8) buf[off + i] = (v ushr ((7 - i) * 8)).toByte()
-    }
-
     /** Best-effort RAOP timing/sync layout; confirm against a real HomePod. */
     private fun timingLoop() {
         val addr = try {
@@ -470,6 +497,7 @@ class RaopConnection(
         val sock = timingSocket ?: return
         var lastSync = 0L
         var lastTimingReq = 0L
+        var firstSync = true
         val buf = ByteArray(64)
         try {
             while (running.get()) {
@@ -479,18 +507,22 @@ class RaopConnection(
                     // Sync packet: RTP<->NTP mapping, every second. The
                     // NTP comes from the fixed session epoch (anchored
                     // at RECORD), not a fresh ntpNow() — see field docs.
-                    val p = ByteArray(20)
-                    p[0] = 0x80.toByte()
-                    p[1] = 0xD6.toByte()
-                    p[2] = 0x00
-                    p[3] = 0x07
-                    writeU32(p, 4, rtpTime)
+                    // Destination is the receiver's CONTROL port: a
+                    // libshairplay-family receiver ignores the sync
+                    // contents, but the packet's arrival is what gives
+                    // it a valid return address for its retransmit
+                    // requests. It is therefore sent from the RTP
+                    // socket — the socket the retransmit listener owns
+                    // — so that return address is exactly where 0xD5
+                    // requests arrive. Falls back to the timing port
+                    // only when the receiver named no control port.
                     val syncNtp = syncEpochNtp +
                         ((rtpTime - syncEpochTs).toLong() shl 32) / 44100L
-                    writeU64(p, 8, syncNtp)
-                    writeU32(p, 16, rtpTime)
+                    val p = buildSyncPacket(firstSync, rtpTime, syncNtp)
+                    firstSync = false
+                    val destPort = if (controlPort != 0) controlPort else timingPort
                     try {
-                        sock.send(DatagramPacket(p, p.size, addr, timingPort))
+                        (rtpSocket ?: sock).send(DatagramPacket(p, p.size, addr, destPort))
                     } catch (_: Exception) {
                     }
                 }
@@ -553,9 +585,21 @@ class RaopConnection(
                         val port = dp.port
                         synchronized(historyLock) {
                             for (i in 0 until minOf(count, 32)) {
-                                val pkt = history[(first + i) and 0xFFFF] ?: continue
+                                val resendSeq = (first + i) and 0xFFFF
+                                val pkt = history[resendSeq] ?: continue
+                                // Proper resend packet: 4-byte 0x56
+                                // header (with the original sequence
+                                // number) + the original audio packet
+                                // verbatim — a bare verbatim resend is
+                                // discarded by libshairplay-family
+                                // receivers. Addressed to the receiver's
+                                // control port; falls back to the
+                                // request's source port when SETUP named
+                                // no control port.
+                                val resend = buildResendPacket(resendSeq, pkt)
+                                val destPort = if (controlPort != 0) controlPort else port
                                 try {
-                                    sock.send(DatagramPacket(pkt, pkt.size, addr, port))
+                                    sock.send(DatagramPacket(resend, resend.size, addr, destPort))
                                 } catch (_: Exception) {
                                     break
                                 }
@@ -735,6 +779,48 @@ class RaopConnection(
 
         private fun writeU32(buf: ByteArray, off: Int, v: Int) {
             for (i in 0 until 4) buf[off + i] = (v ushr ((3 - i) * 8)).toByte()
+        }
+
+        private fun writeU64(buf: ByteArray, off: Int, v: Long) {
+            for (i in 0 until 8) buf[off + i] = (v ushr ((7 - i) * 8)).toByte()
+        }
+
+        /**
+         * Sync packet (payload type 0x54): maps RTP time to NTP time
+         * for the receiver; built once per second by the timing loop.
+         * The FIRST sync of a session uses first byte 0x90, all later
+         * ones 0x80 — the classic sender pattern (pyatv). [rtpTs] is
+         * the stream timestamp at the head position and [ntp] its
+         * paired wall-clock time, both derived from the session's
+         * fixed sync epoch (see the syncEpochNtp field docs). Pure —
+         * unit-tested without sockets.
+         */
+        internal fun buildSyncPacket(first: Boolean, rtpTs: Int, ntp: Long): ByteArray {
+            val p = ByteArray(20)
+            p[0] = (if (first) 0x90 else 0x80).toByte()
+            p[1] = 0xD4.toByte()
+            p[2] = 0x00
+            p[3] = 0x07
+            writeU32(p, 4, rtpTs)
+            writeU64(p, 8, ntp)
+            writeU32(p, 16, rtpTs)
+            return p
+        }
+
+        /**
+         * Retransmit reply (payload type 0x56): a 4-byte header —
+         * 0x80, 0xD6, the original packet's sequence number —
+         * followed by the original audio packet verbatim. Pure —
+         * unit-tested without sockets.
+         */
+        internal fun buildResendPacket(origSeq: Int, original: ByteArray): ByteArray {
+            val out = ByteArray(4 + original.size)
+            out[0] = 0x80.toByte()
+            out[1] = 0xD6.toByte()
+            out[2] = (origSeq ushr 8).toByte()
+            out[3] = origSeq.toByte()
+            System.arraycopy(original, 0, out, 4, original.size)
+            return out
         }
     }
 }
