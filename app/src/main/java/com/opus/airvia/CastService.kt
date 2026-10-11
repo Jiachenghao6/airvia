@@ -30,16 +30,6 @@ class CastService : Service() {
         private const val ACTION_STOP = "com.opus.airvia.STOP"
         private const val EXTRA_RESULT_CODE = "resultCode"
         private const val EXTRA_DATA = "data"
-        private const val EXTRA_HOST = "host"
-        private const val EXTRA_PORT = "port"
-        private const val EXTRA_NAME = "name"
-        private const val EXTRA_KIND = "kind"
-        private const val EXTRA_ET = "et"
-        private const val EXTRA_DLNA_UDN = "dlnaUdn"
-        private const val EXTRA_DLNA_LOCATION = "dlnaLocation"
-        private const val EXTRA_DLNA_AV = "dlnaAv"
-        private const val EXTRA_DLNA_RC = "dlnaRc"
-        private const val EXTRA_CAST_ROUTE = "castRoute"
         private const val NOTIF_ID = 42
         private const val CHANNEL_ID = "airvia_cast"
 
@@ -52,49 +42,28 @@ class CastService : Service() {
             action = ACTION_START
             putExtra(EXTRA_RESULT_CODE, resultCode)
             if (data != null) putExtra(EXTRA_DATA, data)
-            putExtra(EXTRA_HOST, speaker.host)
-            putExtra(EXTRA_PORT, speaker.port)
-            putExtra(EXTRA_NAME, speaker.name)
-            putExtra(EXTRA_KIND, speaker.kind.name)
-            putExtra(EXTRA_ET, speaker.et)
-            speaker.dlna?.let { d ->
-                putExtra(EXTRA_DLNA_UDN, d.udn)
-                putExtra(EXTRA_DLNA_LOCATION, d.location)
-                putExtra(EXTRA_DLNA_AV, d.avTransportUrl)
-                putExtra(EXTRA_DLNA_RC, d.renderingControlUrl)
+            // The speaker crosses into the service flattened to extras;
+            // SpeakerWire owns the field set (see its doc: a field it
+            // omits silently defaults on the far side).
+            for ((key, value) in SpeakerWire.encode(speaker)) {
+                when (value) {
+                    is Int -> putExtra(key, value)
+                    is String -> putExtra(key, value)
+                }
             }
-            putExtra(EXTRA_CAST_ROUTE, speaker.castRouteId)
         }
 
         fun stopIntent(ctx: Context): Intent =
             Intent(ctx, CastService::class.java).apply { action = ACTION_STOP }
 
         fun speakerFromIntent(intent: Intent): Speaker? {
-            val host = intent.getStringExtra(EXTRA_HOST) ?: return null
-            val sp = Speaker(
-                intent.getStringExtra(EXTRA_NAME) ?: "Speaker",
-                host,
-                intent.getIntExtra(EXTRA_PORT, 7000),
-            )
-            sp.kind = try {
-                SpeakerKind.valueOf(intent.getStringExtra(EXTRA_KIND) ?: "AIRPLAY")
-            } catch (_: Exception) {
-                SpeakerKind.AIRPLAY
+            val extras = intent.extras ?: return null
+            val m = HashMap<String, Any?>()
+            for (key in extras.keySet()) {
+                @Suppress("DEPRECATION")
+                m[key] = extras.get(key)
             }
-            sp.et = intent.getStringExtra(EXTRA_ET)
-            sp.castRouteId = intent.getStringExtra(EXTRA_CAST_ROUTE)
-            val udn = intent.getStringExtra(EXTRA_DLNA_UDN)
-            val av = intent.getStringExtra(EXTRA_DLNA_AV)
-            if (udn != null && av != null) {
-                sp.dlna = com.opus.airvia.dlna.Dlna.DlnaDevice(
-                    udn = udn,
-                    name = sp.name,
-                    location = intent.getStringExtra(EXTRA_DLNA_LOCATION) ?: "",
-                    avTransportUrl = av,
-                    renderingControlUrl = intent.getStringExtra(EXTRA_DLNA_RC),
-                )
-            }
-            return sp
+            return SpeakerWire.decode(m)
         }
     }
 
