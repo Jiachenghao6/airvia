@@ -19,21 +19,33 @@ object Prefs {
     }
 
     fun saveLastSpeaker(ctx: Context, sp: Speaker) {
-        prefs(ctx).edit()
+        val e = prefs(ctx).edit()
             .putString("last_name", sp.name)
             .putString("last_host", sp.host)
             .putInt("last_port", sp.port)
-            .apply()
+        // Split-service RAOP endpoint (Kodi/LibreELEC): the reconnect
+        // card rebuilds the speaker from these prefs, so the RAOP
+        // failover target must be persisted with it (issue #2).
+        if (sp.raopPort != null) e.putInt("last_raop_port", sp.raopPort!!)
+        else e.remove("last_raop_port")
+        if (sp.raopEt != null) e.putString("last_raop_et", sp.raopEt)
+        else e.remove("last_raop_et")
+        e.apply()
     }
 
     fun lastSpeaker(ctx: Context): Speaker? {
         val p = prefs(ctx)
         val host = p.getString("last_host", null) ?: return null
-        return Speaker(
+        val sp = Speaker(
             p.getString("last_name", host) ?: host,
             host,
             p.getInt("last_port", 7000),
         )
+        if (p.contains("last_raop_port")) {
+            sp.raopPort = p.getInt("last_raop_port", 0).takeIf { it > 0 }
+        }
+        sp.raopEt = p.getString("last_raop_et", null)
+        return sp
     }
 
     // --- EQ ------------------------------------------------------------
