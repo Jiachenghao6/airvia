@@ -496,7 +496,6 @@ class RaopConnection(
         }
         val sock = timingSocket ?: return
         var lastSync = 0L
-        var lastTimingReq = 0L
         var firstSync = true
         val buf = ByteArray(64)
         try {
@@ -526,20 +525,12 @@ class RaopConnection(
                     } catch (_: Exception) {
                     }
                 }
-                if (now - lastTimingReq >= 3000) {
-                    lastTimingReq = now
-                    // Timing request: originate timestamp at bytes 24-31.
-                    val p = ByteArray(32)
-                    p[0] = 0x80.toByte()
-                    p[1] = 0xD2.toByte()
-                    p[2] = 0x00
-                    p[3] = 0x07
-                    writeU64(p, 24, ntpNow())
-                    try {
-                        sock.send(DatagramPacket(p, p.size, addr, timingPort))
-                    } catch (_: Exception) {
-                    }
-                }
+                // NOTE: never ORIGINATE timing requests. In RAOP the
+                // receiver initiates timing exchanges; senders only
+                // answer. libshairplay (Kodi) never drains its timing
+                // socket, so an originated request wedges its select
+                // loop and audio is never processed (issue #2, proven
+                // on the local rig). The responder below stays.
                 // Reply to any timing requests the receiver sends us.
                 try {
                     val dp = DatagramPacket(buf, buf.size)
