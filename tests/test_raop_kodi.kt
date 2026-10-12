@@ -71,7 +71,7 @@ fun main() {
     )
 
     // --- Retransmit reply: 0x56 wrapper + original packet verbatim ---
-    val orig = ByteArray(12 + 1415) { (it * 7 % 251).toByte() }
+    val orig = ByteArray(12 + 1412) { (it * 7 % 251).toByte() }
     orig[0] = 0x80.toByte()
     orig[1] = 0x60.toByte() // an audio packet: PT 96
     val resend = RaopConnection.buildResendPacket(0xBEEF, orig)
