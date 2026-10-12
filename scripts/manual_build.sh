@@ -301,7 +301,7 @@ $BUILD_TOOLS/aapt2 link \
   --rename-manifest-package com.opus.airvia \
   --min-sdk-version 29 \
   --target-sdk-version 34 \
-  --version-code 7 \
+  --version-code 9 \
   --version-name "1.2.4" \
   $BUILD/res-out/*.flat $UI_RES_FLATS
 
