@@ -9,7 +9,7 @@ package com.opus.airvia.raop
  * produced — that is all RAOP/AirPlay 1 senders need, and it keeps the
  * encoder tiny and dependency-free.
  *
- * A full 352-sample stereo 16-bit frame encodes to exactly 1415 bytes.
+ * A full 352-sample stereo 16-bit frame encodes to exactly 1412 bytes.
  * Pure Kotlin/JVM — no Android APIs, so it is unit-testable on the JVM.
  */
 object AlacEncoder {
@@ -19,7 +19,7 @@ object AlacEncoder {
     const val SAMPLE_RATE = 44100
 
     /** Encoded byte size of one full 352-sample verbatim stereo frame. */
-    const val FRAME_BYTES = 1415
+    const val FRAME_BYTES = 1412
 
     private class BitWriter(val out: ByteArray) {
         var acc = 0L
@@ -49,31 +49,35 @@ object AlacEncoder {
         }
     }
 
-    private fun encodeChannel(w: BitWriter, samples: ShortArray, count: Int, channel: Int) {
-        w.add(3, 0)                                    // channel tag
-        w.add(4, channel.toLong())                      // channel number
+    /**
+     * Encode one stereo frame as a SINGLE CPE (channel-pair) element with
+     * interleaved L/R samples. [left]/[right] hold [count] samples each
+     * ([count] in 1..FRAME_SAMPLES; short final frames are flagged in-band
+     * per the ALAC verbatim format).
+     *
+     * The frame must be one CPE element, not two SCE (single-channel)
+     * elements: libshairplay's alac_decode_frame reads exactly ONE element
+     * per frame, so with two SCE elements only the first (left) channel
+     * was ever decoded and the right channel came out as zeros at the
+     * receiver (issue #2, proven on the local rig). The CPE case reads
+     * both channels interleaved.
+     */
+    fun encodeFrame(left: ShortArray, right: ShortArray, count: Int = FRAME_SAMPLES): ByteArray {
+        require(count in 1..FRAME_SAMPLES) { "count out of range: $count" }
+        // Short frames add a 32-bit sample count; 8 bytes of slack
+        // covers it.
+        val w = BitWriter(ByteArray(FRAME_BYTES + 8))
+        w.add(3, 1)                                    // CPE tag (channel pair element)
+        w.add(4, 0)                                    // element instance tag
         w.add(12, 0)                                   // header bits (unused)
         w.add(1, if (count != FRAME_SAMPLES) 1 else 0)  // sample-count flag
         w.add(2, 0)                                    // extra bits (unused)
         w.add(1, 1)                                    // escape: verbatim samples follow
         if (count != FRAME_SAMPLES) w.add(32, count.toLong())
         for (i in 0 until count) {
-            w.add(BIT_DEPTH, (samples[i].toInt() and 0xFFFF).toLong())
+            w.add(BIT_DEPTH, (left[i].toInt() and 0xFFFF).toLong())
+            w.add(BIT_DEPTH, (right[i].toInt() and 0xFFFF).toLong())
         }
-    }
-
-    /**
-     * Encode one stereo frame. [left]/[right] hold [count] samples each
-     * ([count] in 1..FRAME_SAMPLES; short final frames are flagged in-band
-     * per the ALAC verbatim format).
-     */
-    fun encodeFrame(left: ShortArray, right: ShortArray, count: Int = FRAME_SAMPLES): ByteArray {
-        require(count in 1..FRAME_SAMPLES) { "count out of range: $count" }
-        // Short frames add a 32-bit sample count per channel; 8 bytes of
-        // slack covers it.
-        val w = BitWriter(ByteArray(FRAME_BYTES + 8))
-        encodeChannel(w, left, count, 0)
-        encodeChannel(w, right, count, 1)
         w.add(3, 7) // ID_END
         w.align()
         w.flush()
