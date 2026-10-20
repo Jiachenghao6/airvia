@@ -36,6 +36,7 @@ Android-to-speaker casting apps have been around for years, but:
 - **Multi-speaker**: cast to several speakers at once; each speaker has
   its **own volume slider** and remembers its level
 - **DLNA / Sonos and Chromecast** via the built-in local stream server
+- **Kodi / LibreELEC**: cast straight to Kodi's built-in AirPlay receiver — including the quirks other casters trip on (confirmed working by a LibreELEC user)
 - **5-band EQ + preamp** with presets, applied live
 - **Now playing**: title, artist, album and artwork sent to the speaker
 - Sleep timer, silence auto-stop, Quick Settings tile, reconnect card
