@@ -109,6 +109,12 @@ project like this stays alive and keeps getting better for everyone.
 No ads, no paywall, no account — just open source, kept open by the
 people who use it and build it.
 
+## Privacy
+
+Airvia collects no personal data — no account, no ads, no analytics, no
+crash reporting. Your audio stays on your own Wi-Fi network. See the
+full [Privacy Policy](PRIVACY.md).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
