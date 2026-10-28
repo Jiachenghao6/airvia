@@ -285,7 +285,7 @@ class MainActivity : ComponentActivity() {
                         selected = tab == 0,
                         onClick = { tab = 0 },
                         icon = { SpeakerIcon() },
-                        label = { Text("Cast") },
+                        label = { Text("投送") },
                     )
                     NavigationBarItem(
                         selected = tab == 1,
@@ -294,7 +294,7 @@ class MainActivity : ComponentActivity() {
                             metaAccessGranted = NowPlaying.accessGranted(this@MainActivity)
                         },
                         icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                        label = { Text("Settings") },
+                        label = { Text("设置") },
                     )
                     NavigationBarItem(
                         selected = tab == 2,
@@ -303,7 +303,7 @@ class MainActivity : ComponentActivity() {
                             logLines = LogBus.snapshot()
                         },
                         icon = { Icon(Icons.Filled.List, contentDescription = null) },
-                        label = { Text("Log") },
+                        label = { Text("日志") },
                     )
                 }
             },

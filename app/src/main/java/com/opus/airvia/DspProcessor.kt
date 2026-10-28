@@ -138,11 +138,11 @@ object Eq {
     data class Preset(val name: String, val gains: DoubleArray, val preampDb: Double)
 
     val PRESETS = listOf(
-        Preset("Flat", doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0), 0.0),
-        Preset("Bass", doubleArrayOf(6.0, 4.0, 1.0, 0.0, 0.0), -2.0),
-        Preset("Treble", doubleArrayOf(0.0, 0.0, 1.0, 4.0, 6.0), -2.0),
-        Preset("Vocal", doubleArrayOf(-2.0, 1.0, 4.0, 3.0, 0.0), 0.0),
-        Preset("Party", doubleArrayOf(5.0, 3.0, 0.0, 3.0, 5.0), -3.0),
+        Preset("原声", doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0), 0.0),
+        Preset("低音", doubleArrayOf(6.0, 4.0, 1.0, 0.0, 0.0), -2.0),
+        Preset("高音", doubleArrayOf(0.0, 0.0, 1.0, 4.0, 6.0), -2.0),
+        Preset("人声", doubleArrayOf(-2.0, 1.0, 4.0, 3.0, 0.0), 0.0),
+        Preset("派对", doubleArrayOf(5.0, 3.0, 0.0, 3.0, 5.0), -3.0),
     )
 
     fun apply(gains: DoubleArray, preampDb: Double) {

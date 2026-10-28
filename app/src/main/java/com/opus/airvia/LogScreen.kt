@@ -46,12 +46,12 @@ fun LogScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Connection log",
+                    "连接日志",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "Everything the speaker and Airvia say to each other.",
+                    "Airvia 和音箱之间的全部通信记录。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -60,10 +60,10 @@ fun LogScreen(
                 CopyIcon()
             }
             IconButton(onClick = onShare) {
-                Icon(Icons.Filled.Share, contentDescription = "Share log")
+                Icon(Icons.Filled.Share, contentDescription = "分享日志")
             }
             IconButton(onClick = onClear) {
-                Icon(Icons.Filled.Delete, contentDescription = "Clear log")
+                Icon(Icons.Filled.Delete, contentDescription = "清空日志")
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -82,7 +82,7 @@ fun LogScreen(
             }
             if (lines.isEmpty()) {
                 Text(
-                    "Nothing yet — cast to a speaker and the conversation appears here.",
+                    "还没有记录。开始投送后，通信过程会显示在这里。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(20.dp),

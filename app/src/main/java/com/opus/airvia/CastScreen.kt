@@ -89,7 +89,7 @@ fun CastScreen(
                 modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
             ) {
                 Text(
-                    "Speakers on this Wi-Fi",
+                    "同一 Wi-Fi 下的音箱",
                     style = MaterialTheme.typography.titleMedium,
                     color = Airvia.palette.legend,
                     modifier = Modifier.weight(1f),
@@ -102,7 +102,7 @@ fun CastScreen(
                     )
                     Spacer(Modifier.width(4.dp))
                 }
-                TextButton(onClick = onRescan) { Text("Search again") }
+                TextButton(onClick = onRescan) { Text("重新搜索") }
             }
         }
 
@@ -110,9 +110,9 @@ fun CastScreen(
             item {
                 Text(
                     if (scanning) {
-                        "Searching… Turn the speaker on and keep this phone on the same Wi-Fi."
+                        "正在搜索…请打开音箱，并让手机连在同一个 Wi-Fi 上。"
                     } else {
-                        "No speakers found. Check the speaker is on the same Wi-Fi, then search again."
+                        "没有找到音箱。确认音箱和手机在同一个 Wi-Fi 上，再重新搜索。"
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = Airvia.palette.legend,
@@ -169,8 +169,8 @@ private fun VolumeHero(
             Spacer(Modifier.width(10.dp))
             Text(
                 when (state) {
-                    CastEngine.State.CONNECTING -> "Connecting to ${activeSpeakers.names()}"
-                    CastEngine.State.ERROR -> "Couldn't connect"
+                    CastEngine.State.CONNECTING -> "正在连接 ${activeSpeakers.names()}"
+                    CastEngine.State.ERROR -> "连接失败"
                     else -> activeSpeakers.names()
                 },
                 style = MaterialTheme.typography.titleMedium,
@@ -180,7 +180,7 @@ private fun VolumeHero(
         }
         if (isError) {
             Text(
-                error ?: "The speaker didn't answer. Check it's on, then try again.",
+                error ?: "音箱没有响应。确认它已开机，再试一次。",
                 style = MaterialTheme.typography.bodyMedium,
                 color = p.fault,
                 modifier = Modifier.padding(top = 8.dp),
@@ -204,14 +204,14 @@ private fun VolumeHero(
                 )
             }
             Text(
-                "Use the phone's volume buttons — they work from the lock screen too.",
+                "用手机侧边的音量键调节，锁屏时也能用。",
                 style = MaterialTheme.typography.bodyMedium,
                 color = p.legend,
             )
         }
         Spacer(Modifier.height(16.dp))
         OutlinedButton(onClick = onStopAll) {
-            Text(if (isError) "Dismiss" else if (activeSpeakers.size > 1) "Stop all" else "Stop")
+            Text(if (isError) "关闭" else if (activeSpeakers.size > 1) "全部停止" else "停止")
         }
     }
 }
@@ -244,7 +244,7 @@ private fun SpeakerRow(
                 overflow = TextOverflow.Ellipsis,
             )
             val sub = when {
-                lastUsed -> "Last used"
+                lastUsed -> "上次使用"
                 speaker.kind == SpeakerKind.DLNA -> "DLNA / Sonos"
                 speaker.kind == SpeakerKind.CHROMECAST -> "Chromecast"
                 else -> "AirPlay"
@@ -256,7 +256,7 @@ private fun SpeakerRow(
             Spacer(Modifier.width(12.dp))
         }
         Text(
-            if (live) "Stop" else "Connect",
+            if (live) "停止" else "连接",
             style = MaterialTheme.typography.labelLarge,
             color = if (live) p.legend else p.ink,
         )
@@ -293,4 +293,4 @@ private fun Led(state: CastEngine.State?) {
     )
 }
 
-private fun List<Speaker>.names() = joinToString(", ") { it.name }
+private fun List<Speaker>.names() = joinToString("、") { it.name }

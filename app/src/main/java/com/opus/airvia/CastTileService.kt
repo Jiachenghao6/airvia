@@ -50,9 +50,9 @@ class CastTileService : TileService() {
         if (Build.VERSION.SDK_INT >= 29) {
             tile.subtitle = when {
                 CastEngine.state == CastEngine.State.STREAMING ->
-                    "Casting to ${sp?.name ?: "speaker"}"
-                CastEngine.state == CastEngine.State.CONNECTING -> "Connecting…"
-                else -> "Tap to cast"
+                    "正在投送到 ${sp?.name ?: "音箱"}"
+                CastEngine.state == CastEngine.State.CONNECTING -> "正在连接…"
+                else -> "点按开始投送"
             }
         }
         tile.updateTile()

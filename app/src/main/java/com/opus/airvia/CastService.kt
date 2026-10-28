@@ -88,7 +88,7 @@ class CastService : Service() {
         PhoneSilencer.healIfStale(this)
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Casting", NotificationManager.IMPORTANCE_LOW),
+            NotificationChannel(CHANNEL_ID, "投送", NotificationManager.IMPORTANCE_LOW),
         )
     }
 
@@ -114,7 +114,7 @@ class CastService : Service() {
             // First speaker of this run: bring the whole pipeline up.
             startForeground(
                 NOTIF_ID,
-                buildNotification("Connecting…"),
+                buildNotification("正在连接…"),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION,
             )
             try {
@@ -234,7 +234,7 @@ class CastService : Service() {
             .setContentIntent(openApp)
             .addAction(
                 Notification.Action.Builder(
-                    android.R.drawable.ic_media_pause, "Stop", stop,
+                    android.R.drawable.ic_media_pause, "停止", stop,
                 ).build(),
             )
             .setOngoing(true)
@@ -245,17 +245,17 @@ class CastService : Service() {
         if (projection == null) return
         val sessions = CastEngine.snapshot()
         val text = when {
-            sessions.isEmpty() -> "Casting"
+            sessions.isEmpty() -> "投送中"
             sessions.size == 1 -> {
                 val ss = sessions[0]
                 val verb = if (ss.state == CastEngine.State.STREAMING) {
-                    "Streaming all device audio"
+                    "正在投送手机全部声音"
                 } else {
-                    "Connecting…"
+                    "正在连接…"
                 }
                 "${ss.speaker.name} — $verb"
             }
-            else -> "Casting to ${sessions.size} speakers: " +
+            else -> "正在投送到 ${sessions.size} 个音箱：" +
                 sessions.joinToString(", ") { it.speaker.name }
         }
         try {

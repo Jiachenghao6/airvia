@@ -75,7 +75,7 @@ fun TuneScreen(
         // --- EQ ------------------------------------------------------
         item {
             Text(
-                "Equalizer",
+                "均衡器",
                 style = MaterialTheme.typography.titleMedium,
                 color = Airvia.palette.legend,
             )
@@ -118,14 +118,12 @@ fun TuneScreen(
                         )
                     }
                     EqBandRow(
-                        label = "Preamp",
+                        label = "前级",
                         db = eqPreamp,
                         onChange = { db -> onEqChange(eqGains.copyOf(), db) },
                     )
                     Text(
-                        "Shapes the sound on every speaker, live. Applies to " +
-                            "AirPlay, DLNA and Chromecast alike (it runs on the " +
-                            "phone's captured audio).",
+                        "实时作用于所有音箱。在手机端处理声音，AirPlay、DLNA、Chromecast 都生效。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -136,7 +134,7 @@ fun TuneScreen(
         // --- Now playing ----------------------------------------------
         item {
             Text(
-                "Now playing",
+                "正在播放",
                 style = MaterialTheme.typography.titleMedium,
                 color = Airvia.palette.legend,
             )
@@ -152,14 +150,12 @@ fun TuneScreen(
                 Column(Modifier.padding(16.dp)) {
                     if (!metaAccessGranted) {
                         Text(
-                            "Speakers can show the song title, artist and album " +
-                                "art — Android asks you to allow notification " +
-                                "access once so Airvia can read what's playing.",
+                            "音箱可以显示歌名、歌手和封面。需要允许一次通知访问权限，Airvia 才能读到正在播放的内容。",
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Spacer(Modifier.height(10.dp))
                         Button(onClick = onGrantMetaAccess) {
-                            Text("Allow notification access")
+                            Text("允许通知访问")
                         }
                     } else if (nowPlaying != null) {
                         Text(
@@ -177,14 +173,13 @@ fun TuneScreen(
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "This is what your AirPlay speakers display.",
+                            "AirPlay 音箱上显示的就是这些。",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
                         Text(
-                            "Nothing playing right now. Start music in any app " +
-                                "and its title and artwork will appear on the speaker.",
+                            "现在没有在播放。在任意 App 里放歌，歌名和封面就会显示到音箱上。",
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -193,7 +188,7 @@ fun TuneScreen(
         }
 
         // --- Sleep timer -----------------------------------------------
-        item { SectionTitle("Sleep timer") }
+        item { SectionTitle("定时停止") }
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -208,12 +203,12 @@ fun TuneScreen(
                             FilterChip(
                                 selected = sleepMinutes == m,
                                 onClick = { onSleepTimer(m) },
-                                label = { Text(if (m == 0) "Off" else "$m min") },
+                                label = { Text(if (m == 0) "关" else "$m 分钟") },
                             )
                         }
                     }
                     Text(
-                        "Casting also stops by itself after 5 silent minutes.",
+                        "连续 5 分钟没有声音也会自动停止投送。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -222,7 +217,7 @@ fun TuneScreen(
         }
 
         // --- Connect by IP ---------------------------------------------
-        item { SectionTitle("Connect by IP") }
+        item { SectionTitle("按 IP 连接") }
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -233,7 +228,7 @@ fun TuneScreen(
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text(
-                        "For an AirPlay speaker that doesn't show up in the list.",
+                        "列表里找不到的 AirPlay 音箱，可以在这里手动连接。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -242,7 +237,7 @@ fun TuneScreen(
                         OutlinedTextField(
                             value = hostInput,
                             onValueChange = onHostChange,
-                            label = { Text("Speaker IP") },
+                            label = { Text("音箱 IP") },
                             placeholder = { Text("192.168.1.20") },
                             singleLine = true,
                             modifier = Modifier.weight(2f),
@@ -251,7 +246,7 @@ fun TuneScreen(
                         OutlinedTextField(
                             value = portInput,
                             onValueChange = onPortChange,
-                            label = { Text("Port") },
+                            label = { Text("端口") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f),
@@ -259,7 +254,7 @@ fun TuneScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                     OutlinedButton(onClick = onConnectIp, modifier = Modifier.fillMaxWidth()) {
-                        Text("Connect")
+                        Text("连接")
                     }
                 }
             }
@@ -268,7 +263,7 @@ fun TuneScreen(
         // --- Per-app capture -------------------------------------------
         item {
             Text(
-                "Capture from",
+                "捕获哪些 App 的声音",
                 style = MaterialTheme.typography.titleMedium,
                 color = Airvia.palette.legend,
             )
@@ -292,26 +287,25 @@ fun TuneScreen(
                     Column(Modifier.weight(1f)) {
                         Text(
                             if (selectedApps.isEmpty()) {
-                                "All apps"
+                                "全部 App"
                             } else {
-                                "${selectedApps.size} app(s) selected"
+                                "已选 ${selectedApps.size} 个 App"
                             },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium,
                         )
                         Text(
                             if (selectedApps.isEmpty()) {
-                                "Every app's audio is cast."
+                                "所有 App 的声音都会投出去。"
                             } else {
-                                "Only the ticked apps are cast. Takes effect " +
-                                    "on the next cast."
+                                "只投勾选的 App，下次投送时生效。"
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     if (selectedApps.isNotEmpty()) {
-                        TextButton(onClick = onCaptureAllApps) { Text("Reset") }
+                        TextButton(onClick = onCaptureAllApps) { Text("恢复全部") }
                     }
                 }
             }

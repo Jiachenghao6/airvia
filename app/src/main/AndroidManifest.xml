@@ -34,7 +34,7 @@
             android:name=".CastTileService"
             android:exported="true"
             android:icon="@drawable/ic_speaker"
-            android:label="Airvia Cast"
+            android:label="Airvia 投送"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
@@ -43,7 +43,7 @@
         <service
             android:name=".NowPlayingListenerService"
             android:exported="true"
-            android:label="Airvia now playing"
+            android:label="Airvia 正在播放"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
