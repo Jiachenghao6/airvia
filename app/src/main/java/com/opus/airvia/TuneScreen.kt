@@ -28,6 +28,10 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -64,6 +68,7 @@ fun TuneScreen(
     onPortChange: (String) -> Unit,
     onConnectIp: () -> Unit,
 ) {
+    var appQuery by remember { mutableStateOf("") }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -310,7 +315,24 @@ fun TuneScreen(
                 }
             }
         }
-        items(apps, key = { it.packageName }) { app ->
+        item {
+            OutlinedTextField(
+                value = appQuery,
+                onValueChange = { appQuery = it },
+                label = { Text("搜索 App") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        val shown = if (appQuery.isBlank()) {
+            apps
+        } else {
+            apps.filter {
+                it.label.contains(appQuery.trim(), ignoreCase = true) ||
+                    it.packageName.contains(appQuery.trim(), ignoreCase = true)
+            }
+        }
+        items(shown, key = { it.packageName }) { app ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

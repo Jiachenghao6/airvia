@@ -254,6 +254,7 @@ class MainActivity : ComponentActivity() {
                 }
                 apps.sortBy { it.label.lowercase() }
                 installedApps = apps
+                LogBus.log("[ui] ${apps.size} apps available for per-app capture")
             } catch (e: Exception) {
                 LogBus.log("[ui] app list failed: ${e.message}")
             }
