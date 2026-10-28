@@ -1,3 +1,8 @@
 build/
 *.apk
 *.idsig
+.gradle/
+local.properties
+.idea/
+*.iml
+.kotlin/
