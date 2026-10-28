@@ -44,7 +44,7 @@ object CastEngine {
         var state: State = State.CONNECTING
 
         @Volatile
-        var volumePct: Int = 100
+        var volumePct: Int = FIRST_CONNECT_VOLUME
 
         @Volatile
         var error: String? = null
@@ -113,7 +113,7 @@ object CastEngine {
         get() = snapshot().firstOrNull()?.speaker
 
     val volumePct: Int
-        get() = snapshot().firstOrNull()?.volumePct ?: 100
+        get() = snapshot().firstOrNull()?.volumePct ?: FIRST_CONNECT_VOLUME
 
     val isActive: Boolean
         get() = state == State.CONNECTING || state == State.STREAMING
@@ -240,8 +240,9 @@ object CastEngine {
             volumeLoader?.invoke(sp)
         } catch (_: Exception) {
             null
-        } ?: 100
-        LogBus.log("[engine] connecting to '${sp.name}' (${sp.kind})")
+        } ?: FIRST_CONNECT_VOLUME
+        if (ss === snapshot().firstOrNull()) VolumeKeys.updateVolume(ss.volumePct)
+        LogBus.log("[engine] connecting to '${sp.name}' (${sp.kind}) at ${ss.volumePct}%")
         notifyChanged()
         thread(name = "airvia-cast-${sp.key}", isDaemon = true) {
             runSession(ss, source)
@@ -354,6 +355,13 @@ object CastEngine {
         for (ss in snapshot()) setVolume(ss.speaker, ss.volumePct + delta)
     }
 
+    /**
+     * Volume for a speaker Airvia has never cast to. Receivers otherwise keep
+     * their own level, which for amps and HomePods is often full blast
+     * (upstream issue #6) — so a first connect always starts quiet.
+     */
+    const val FIRST_CONNECT_VOLUME = 25
+
     private fun pctToDb(pct: Int): Float =
         (-30.0 + (pct.coerceIn(0, 100) / 100.0) * 30.0).toFloat()
 
@@ -376,7 +384,7 @@ object CastEngine {
                 ss.state = State.STREAMING
                 ss.protocol = "AirPlay 2"
                 val a = audioRef.get()
-                if (ss.volumePct != 100) a?.setVolumeDb(pctToDb(ss.volumePct))
+                a?.setVolumeDb(pctToDb(ss.volumePct))
                 NowPlaying.current?.let { info ->
                     a?.setMetadata(info.title, info.artist, info.album, info.artworkJpeg)
                 }
@@ -384,7 +392,7 @@ object CastEngine {
             }
             audioRef.set(audio)
             ss.live = Ap2Live(audio)
-            if (ss.volumePct != 100) audio.setVolumeDb(pctToDb(ss.volumePct))
+            audio.setVolumeDb(pctToDb(ss.volumePct))
             audio.run()
         } catch (e: Exception) {
             failure = e
@@ -459,7 +467,7 @@ object CastEngine {
                 val live = RaopLive(conn)
                 ss.live = live
                 conn.startSender()
-                if (ss.volumePct != 100) conn.setVolume(ss.volumePct)
+                conn.setVolume(ss.volumePct)
                 NowPlaying.current?.let {
                     conn.setMetadata(it.title, it.artist, it.album)
                 }
@@ -550,7 +558,7 @@ object CastEngine {
             live.stop()
             return
         }
-        if (ss.volumePct != 100) live.setVolumePct(ss.volumePct)
+        live.setVolumePct(ss.volumePct)
         ss.protocol = "DLNA"
         ss.state = State.STREAMING
         LogBus.log("[engine] DLNA streaming to '${sp.name}' via $url")
@@ -615,6 +623,10 @@ object CastEngine {
         if (ss.stopRequested) {
             live.stop()
             return
+        }
+        try {
+            live.setVolumePct(ss.volumePct)
+        } catch (_: Exception) {
         }
         ss.protocol = "Chromecast"
         ss.state = State.STREAMING
