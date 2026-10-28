@@ -356,9 +356,10 @@ object CastEngine {
     }
 
     /**
-     * Volume for a speaker Airvia has never cast to. Receivers otherwise keep
-     * their own level, which for amps and HomePods is often full blast
-     * (upstream issue #6) — so a first connect always starts quiet.
+     * Fallback start volume when the phone's media volume can't be read.
+     * The volume is always sent on connect: receivers otherwise keep their
+     * own level, which for amps and HomePods is often full blast (upstream
+     * issue #6).
      */
     const val FIRST_CONNECT_VOLUME = 25
 

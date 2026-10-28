@@ -95,6 +95,28 @@ object PhoneSilencer {
         )
     }
 
+    /**
+     * The phone's media volume as 0..100. While engaged the stream sits at
+     * 0, so this reports the level the user had before the cast started —
+     * that is what a speaker starts at when it connects.
+     */
+    @Synchronized
+    fun phoneVolumePct(ctx: Context): Int? {
+        val am = audioManager ?: ctx.getSystemService(AudioManager::class.java) ?: return null
+        return try {
+            val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            if (max <= 0) return null
+            val idx = if (engaged && savedIndex >= 0) {
+                savedIndex
+            } else {
+                am.getStreamVolume(AudioManager.STREAM_MUSIC)
+            }
+            (idx * 100 + max / 2) / max
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     /** Restore the saved STREAM_MUSIC index. Safe to call when idle. */
     @Synchronized
     fun release(ctx: Context) {

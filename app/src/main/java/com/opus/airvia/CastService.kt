@@ -184,7 +184,13 @@ class CastService : Service() {
         PhoneSilencer.engage(this)
 
         CastEngine.volumeSaver = { sp, pct -> Prefs.saveVolume(this, sp, pct) }
-        CastEngine.volumeLoader = { sp -> Prefs.volumeFor(this, sp) }
+        // A speaker starts at the phone's own media volume; one added mid-cast
+        // joins at the level the others are already playing, so the side
+        // buttons keep every speaker in step.
+        CastEngine.volumeLoader = { sp ->
+            CastEngine.snapshot().firstOrNull { it.speaker.key != sp.key }?.volumePct
+                ?: PhoneSilencer.phoneVolumePct(this)
+        }
         CastEngine.streamUrlProvider = { server.streamUrl() }
         registerChromecastStarter()
         CastEngine.addListener(engineListener)
