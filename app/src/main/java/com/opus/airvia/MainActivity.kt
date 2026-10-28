@@ -14,6 +14,7 @@ import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.List
@@ -56,6 +57,9 @@ class MainActivity : ComponentActivity() {
 
     // Compose-observable UI state (written from engine/discovery callbacks).
     private var tab by mutableStateOf(0)
+    private var update by mutableStateOf<Updater.Update?>(null)
+    private var updateProgress by mutableStateOf<Int?>(null)
+    private var updateError by mutableStateOf<String?>(null)
     private var airplaySpeakers by mutableStateOf<List<Speaker>>(emptyList())
     private var dlnaSpeakers by mutableStateOf<List<Speaker>>(emptyList())
     private var castSpeakers by mutableStateOf<List<Speaker>>(emptyList())
@@ -128,6 +132,7 @@ class MainActivity : ComponentActivity() {
         loadInstalledApps()
         LogBus.log("Airvia ready — pick a speaker to cast all device audio")
         syncFromEngine()
+        checkForUpdate()
         setContent {
             AirviaTheme {
                 LaunchedEffect(Unit) {
@@ -308,7 +313,16 @@ class MainActivity : ComponentActivity() {
                 }
             },
         ) { inner ->
-            Box(Modifier.padding(inner)) {
+            Column(Modifier.padding(inner)) {
+                update?.let { u ->
+                    UpdateBanner(
+                        update = u,
+                        progress = updateProgress,
+                        error = updateError,
+                        onUpdate = { installUpdate(u) },
+                        onDismiss = { update = null },
+                    )
+                }
                 when (tab) {
                     0 -> CastScreen(
                         castState = castState,
@@ -387,6 +401,45 @@ class MainActivity : ComponentActivity() {
                             logLines = emptyList()
                         },
                     )
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Self-update (fork releases on GitHub), checked on every launch
+    // ------------------------------------------------------------------
+
+    private fun checkForUpdate() {
+        thread(name = "airvia-update-check", isDaemon = true) {
+            val found = try {
+                Updater.check(this)
+            } catch (e: Exception) {
+                LogBus.log("[update] check failed: ${e.message}")
+                null
+            }
+            if (found != null) runOnUiThread { update = found }
+        }
+    }
+
+    private fun installUpdate(u: Updater.Update) {
+        if (updateProgress != null) return
+        if (!Updater.canInstall(this)) {
+            updateError = "先允许 Airvia 安装应用，再点一次更新。"
+            Updater.openInstallPermissionSettings(this)
+            return
+        }
+        updateError = null
+        updateProgress = 0
+        thread(name = "airvia-update-download", isDaemon = true) {
+            try {
+                Updater.downloadAndInstall(this, u) { pct -> runOnUiThread { updateProgress = pct } }
+                runOnUiThread { updateProgress = null }
+            } catch (e: Exception) {
+                LogBus.log("[update] download failed: ${e.message}")
+                runOnUiThread {
+                    updateProgress = null
+                    updateError = "下载失败，检查网络后再试。"
                 }
             }
         }
