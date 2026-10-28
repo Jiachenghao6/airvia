@@ -1,5 +1,6 @@
 package com.opus.airvia
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,20 +12,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
 /** One launchable app, for the per-app capture picker. */
@@ -32,7 +40,8 @@ data class AppEntry(val packageName: String, val label: String)
 
 /**
  * The Tune tab: 5-band EQ + preamp (applied live to the cast stream),
- * now-playing metadata access, and the per-app capture picker.
+ * now-playing metadata access, the per-app capture picker, the sleep
+ * timer and connect-by-IP — everything the Cast tab leaves out.
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +56,13 @@ fun TuneScreen(
     selectedApps: Set<String>,
     onToggleApp: (String, Boolean) -> Unit,
     onCaptureAllApps: () -> Unit,
+    sleepMinutes: Int,
+    onSleepTimer: (Int) -> Unit,
+    hostInput: String,
+    portInput: String,
+    onHostChange: (String) -> Unit,
+    onPortChange: (String) -> Unit,
+    onConnectIp: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier
@@ -60,14 +76,14 @@ fun TuneScreen(
         item {
             Text(
                 "Equalizer",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium,
+                color = Airvia.palette.legend,
             )
         }
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                 ),
@@ -75,7 +91,9 @@ fun TuneScreen(
                 Column(Modifier.padding(16.dp)) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
                     ) {
                         for (preset in Eq.PRESETS) {
                             val selected = preset.preampDb == eqPreamp &&
@@ -119,14 +137,14 @@ fun TuneScreen(
         item {
             Text(
                 "Now playing",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium,
+                color = Airvia.palette.legend,
             )
         }
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                 ),
@@ -174,18 +192,91 @@ fun TuneScreen(
             }
         }
 
+        // --- Sleep timer -----------------------------------------------
+        item { SectionTitle("Sleep timer") }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                ),
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (m in listOf(0, 15, 30, 60)) {
+                            FilterChip(
+                                selected = sleepMinutes == m,
+                                onClick = { onSleepTimer(m) },
+                                label = { Text(if (m == 0) "Off" else "$m min") },
+                            )
+                        }
+                    }
+                    Text(
+                        "Casting also stops by itself after 5 silent minutes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        // --- Connect by IP ---------------------------------------------
+        item { SectionTitle("Connect by IP") }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                ),
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        "For an AirPlay speaker that doesn't show up in the list.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = hostInput,
+                            onValueChange = onHostChange,
+                            label = { Text("Speaker IP") },
+                            placeholder = { Text("192.168.1.20") },
+                            singleLine = true,
+                            modifier = Modifier.weight(2f),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        OutlinedTextField(
+                            value = portInput,
+                            onValueChange = onPortChange,
+                            label = { Text("Port") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedButton(onClick = onConnectIp, modifier = Modifier.fillMaxWidth()) {
+                        Text("Connect")
+                    }
+                }
+            }
+        }
+
         // --- Per-app capture -------------------------------------------
         item {
             Text(
                 "Capture from",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium,
+                color = Airvia.palette.legend,
             )
         }
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = if (selectedApps.isEmpty()) {
                         MaterialTheme.colorScheme.primaryContainer
@@ -259,22 +350,39 @@ private fun EqBandRow(label: String, db: Double, onChange: (Double) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             label,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.width(64.dp),
+            style = ReadoutStyle,
+            color = Airvia.palette.legend,
+            modifier = Modifier.width(56.dp),
         )
         Slider(
             value = db.toFloat(),
             onValueChange = { onChange(it.toDouble()) },
             valueRange = -12f..12f,
             steps = 23,
+            colors = SliderDefaults.colors(
+                thumbColor = Airvia.palette.ink,
+                activeTrackColor = Airvia.palette.ink,
+                inactiveTrackColor = Airvia.palette.groove,
+                activeTickColor = Color.Transparent,
+                inactiveTickColor = Color.Transparent,
+            ),
             modifier = Modifier.weight(1f),
         )
         Text(
             (if (db > 0) "+" else "") + "%.0f dB".format(db),
-            style = MaterialTheme.typography.labelLarge,
+            style = ReadoutStyle,
             modifier = Modifier.width(52.dp),
         )
     }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleMedium,
+        color = Airvia.palette.legend,
+    )
 }
 
 private fun freqLabel(hz: Int): String =

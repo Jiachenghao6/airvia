@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import com.opus.airvia.dlna.Dlna
 import java.net.URL
@@ -267,8 +268,7 @@ class MainActivity : ComponentActivity() {
                     title = {
                         Text(
                             "Airvia",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineMedium,
                         )
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -277,7 +277,10 @@ class MainActivity : ComponentActivity() {
                 )
             },
             bottomBar = {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    tonalElevation = 0.dp,
+                ) {
                     NavigationBarItem(
                         selected = tab == 0,
                         onClick = { tab = 0 },
@@ -291,7 +294,7 @@ class MainActivity : ComponentActivity() {
                             metaAccessGranted = NowPlaying.accessGranted(this@MainActivity)
                         },
                         icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                        label = { Text("Tune") },
+                        label = { Text("Settings") },
                     )
                     NavigationBarItem(
                         selected = tab == 2,
@@ -313,13 +316,8 @@ class MainActivity : ComponentActivity() {
                         castError = castError,
                         sessionStates = sessionStates,
                         sessionVolumes = sessionVolumes,
-                        sessionProtocols = sessionProtocols,
                         speakers = airplaySpeakers + dlnaSpeakers + castSpeakers,
                         scanning = scanning,
-                        hostInput = hostInput,
-                        portInput = portInput,
-                        onHostChange = { hostInput = it },
-                        onPortChange = { portInput = it },
                         onCast = { beginCast(it) },
                         onStopSpeaker = { sp ->
                             CastEngine.stopSpeaker(sp)
@@ -333,9 +331,6 @@ class MainActivity : ComponentActivity() {
                             runCastScan()
                             LogBus.log("[ui] rescan")
                         },
-                        onVolumeSpeaker = { sp, pct -> CastEngine.setVolume(sp, pct) },
-                        sleepMinutes = sleepMinutes,
-                        onSleepTimer = { CastEngine.setSleepTimer(it) },
                         lastSpeaker = lastSpeaker,
                     )
                     1 -> TuneScreen(
@@ -368,6 +363,19 @@ class MainActivity : ComponentActivity() {
                         onCaptureAllApps = {
                             selectedApps = emptySet()
                             Prefs.saveCapturePackages(this@MainActivity, emptySet())
+                        },
+                        sleepMinutes = sleepMinutes,
+                        onSleepTimer = { CastEngine.setSleepTimer(it) },
+                        hostInput = hostInput,
+                        portInput = portInput,
+                        onHostChange = { hostInput = it },
+                        onPortChange = { portInput = it },
+                        onConnectIp = {
+                            val host = hostInput.trim()
+                            if (host.isNotEmpty()) {
+                                beginCast(Speaker(host, host, portInput.toIntOrNull() ?: 7000))
+                                tab = 0
+                            }
                         },
                     )
                     else -> LogScreen(
